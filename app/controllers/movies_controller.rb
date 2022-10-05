@@ -28,14 +28,14 @@ class MoviesController < ApplicationController
     session[:category] = session[:category] || ""
     @category = session[:category]
     
-    /
+    
     if !session.key?(:ratings) || !session.key?(:sort_by)
       @all_ratings_hash = Hash[@all_ratings.collect {|key| [key, '1']}]
       session[:ratings] = @all_ratings_hash if !session.key?(:ratings)
       session[:sort_by] = '' if !session.key?(:sort_by)
       redirect_to movies_path(:ratings => @all_ratings_hash, :sort_by => '') and return
     end
-    
+    /
     if (!params.has_key?(:ratings) && session.key?(:ratings)) ||
       (!params.has_key?(:sort_by) && session.key?(:sort_by))
       redirect_to movies_path(:ratings => Hash[session[:ratings].collect {|key| [key, '1']}], :sort_by => session[:sort_by]) and return
