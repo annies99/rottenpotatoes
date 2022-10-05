@@ -7,30 +7,92 @@ class MoviesController < ApplicationController
   end
 
   def index
-    @all_ratings = Movie.all_ratings
-    
-    if !session.key?(:ratings) || !session.key?(:sort_by)
-      @all_ratings_hash = Hash[@all_ratings.collect {|key| [key, '1']}]
-      session[:ratings] = @all_ratings_hash if !session.key?(:ratings)
-      session[:sort_by] = '' if !session.key?(:sort_by)
-      redirect_to movies_path(:ratings => @all_ratings_hash, :sort_by => '') and return
+    @all_ratings = ['G', 'PG', 'PG-13', 'R']
+    @redirect_required = false
+
+    @sort_order = _get_sort_order
+    @ratings_hash = _get_selected_ratings
+
+    #force a redirect if we're using session data so we stay RESTful
+    if @redirect_required
+      puts 'redirect req'
+      if !@sort_order.nil? && !@ratings_hash.nil?
+        redirect_to movies_path(:sort_order => @sort_order, :ratings => @ratings_hash)
+      elsif !@sort_order.nil? && @ratings_hash.nil?
+        redirect_to movies_path(:sort_order => @sort_order)
+      else
+        redirect_to movies_path(:ratings => @ratings_hash)
+      end
+      return
     end
-    
-    if (!params.has_key?(:ratings) && session.key?(:ratings)) ||
-      (!params.has_key?(:sort_by) && session.key?(:sort_by))
-      redirect_to movies_path(:ratings => Hash[session[:ratings].collect {|key| [key, '1']}], :sort_by => session[:sort_by]) and return
+	
+	#Pull keys out of ratings filter hash as values are irrelevant.
+    if !@ratings_hash.nil?
+      @selected_ratings = @ratings_hash.keys
     end
-    
-    @ratings_to_show = params[:ratings].keys
-    @ratings_to_show_hash = Hash[@ratings_to_show.collect {|key| [key, '1']}]
-    session[:ratings] = @ratings_to_show
-    
-    @movies = Movie.with_ratings(@ratings_to_show)
-    
-    @movies = @movies.order(params[:sort_by]) if params[:sort_by] != ''
-    session[:sort_by] = params[:sort_by]
-    @title_header = (params[:sort_by]=='title') ? 'hilite bg-warning' : ''
-    @release_date_header = (params[:sort_by]=='release_date') ? 'hilite bg-warning' : ''
+
+	#Build up filters hash. Not really necessary as I can't figure out how cut down my ActiveRecord query.
+    filters = Hash.new
+    if !@selected_ratings.nil?
+      filters[:ratings] = @selected_ratings
+    end
+    if !@sort_order.nil?
+      filters[:order] = @sort_order
+    end
+
+	#I bet this could be cut down to 3-4 lines if I did more reading on ActiveRecord. :/
+    if filters.empty?
+      @movies = Movie.all
+    else
+      if !filters[:order].nil?
+        if filters[:ratings].nil?
+          @movies = Movie.find(:all, :order => filters[:order])
+        else
+          @movies = Movie.find(:all, :order => filters[:order], :conditions => { :rating => filters[:ratings] })
+        end
+      else
+        if filters[:ratings].nil?
+          @movies = Movie.all
+        else
+          @movies = Movie.find(:all, :conditions => { :rating => filters[:ratings] })
+        end
+      end
+    end
+
+    #Store our sort order and ratings checkboxes in session data.
+    if !@sort_order.nil?
+      session[:sort_order] = @sort_order
+    end
+    if !@ratings_hash.nil?
+      session[:ratings] = @ratings_hash
+    end
+
+  end
+
+  #Get our sort_order. Use value from params if !nil, otherwise attempt to use session data.
+  def _get_sort_order
+    if !params[:sort_order].nil?
+      return params[:sort_order]    
+    end
+    if !session[:sort_order].nil?
+      @redirect_required = true
+      order = session[:sort_order]
+      session.delete(:sort_order)
+      order
+    end
+  end
+
+  #Get our selected_ratings. Use value from params if !nil, otherwise attempt to use session data.
+  def _get_selected_ratings
+    if !params[:ratings].nil?
+      return params[:ratings]
+    end
+    if !session[:ratings].nil?
+      @redirect_required = true
+      ratings = session[:ratings]
+      session.delete(:ratings)
+      ratings
+    end
   end
 
   def new
