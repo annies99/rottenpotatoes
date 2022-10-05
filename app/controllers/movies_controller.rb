@@ -9,6 +9,20 @@ class MoviesController < ApplicationController
   def index
     @all_ratings = Movie.all_ratings
 
+    session[:sort_by] = if params[:sort_by].present?
+      params[:sort_by]
+    else
+      session[:sort_by] || 'id'
+    end
+
+    session[:rating] = if params[:rating].present?
+      params[:rating]
+    else
+      session[:rating] || { 'G' => '1', 'PG' => '1', 'PG-13' => '1', 'R' => '1' }
+    end
+    
+    /
+    # v2
     redirect = false
 
     if params[:ratings]
@@ -24,32 +38,12 @@ class MoviesController < ApplicationController
     else
       redirect = true
     end
-
-    session[:category] = session[:category] || ""
-    @category = session[:category]
-
-    session[:sort_by] = if params[:sort_by].present?
-      params[:sort_by]
-    else
-      session[:sort_by] || 'id'
-    end
-    
-    session[:rating] = if params[:rating].present?
-        params[:rating]
-      else
-        session[:rating] || { 'G' => '1', 'PG' => '1', 'PG-13' => '1', 'R' => '1' }
-      end
-    
-    
     /
+    /
+    # v1
     if !(params[:sort_by].present? && params[:rating].present?)
     redirect_to movies_path(sort_by: session[:sort_by], rating: session[:rating])
     return
-    end
-    
-    if redirect
-      flash.keep
-      redirect_to movies_path({:category => @category, :ratings => @ratings})
     end
 
     if !session.key?(:ratings) || !session.key?(:sort_by)
@@ -65,12 +59,14 @@ class MoviesController < ApplicationController
     end
     /
 
+    # check if ratings empty
     if !params.has_key?(:ratings)
       @ratings_to_show = []
     else
       @ratings_to_show = params[:ratings].keys
     end
     
+    # final step
     @ratings_to_show_hash = Hash[@ratings_to_show.collect {|key| [key, '1']}]
     session[:ratings] = @ratings_to_show
     
@@ -80,7 +76,6 @@ class MoviesController < ApplicationController
     session[:sort_by] = params[:sort_by]
     @title_header = (params[:sort_by]=='title') ? 'hilite bg-warning' : ''
     @release_date_header = (params[:sort_by]=='release_date') ? 'hilite bg-warning' : ''
-
   end
 
   def new
@@ -117,4 +112,6 @@ class MoviesController < ApplicationController
   def movie_params
     params.require(:movie).permit(:title, :rating, :description, :release_date)
   end
+
+
 end
