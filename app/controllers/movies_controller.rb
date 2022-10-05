@@ -8,29 +8,31 @@ class MoviesController < ApplicationController
 
   def index
     @all_ratings = Movie.all_ratings
-    
-    if !session.key?(:ratings) || !session.key?(:sort_by)
-      @all_ratings_hash = Hash[@all_ratings.collect {|key| [key, '1']}]
-      session[:ratings] = @all_ratings_hash if !session.key?(:ratings)
-      session[:sort_by] = '' if !session.key?(:sort_by)
-      redirect_to movies_path(:ratings => @all_ratings_hash, :sort_by => '') and return
+
+    redirect = false
+
+    if params[:ratings]
+      session[:ratings] = params[:ratings]
+    else
+      redirect = true
     end
-    
-    if (!params.has_key?(:ratings) && session.key?(:ratings)) ||
-      (!params.has_key?(:sort_by) && session.key?(:sort_by))
-      redirect_to movies_path(:ratings => Hash[session[:ratings].collect {|key| [key, '1']}], :sort_by => session[:sort_by]) and return
+    session[:ratings] = session[:ratings] || Hash[ @all_ratings.map {|ratings| [ratings, 1]} ]
+    @ratings = session[:ratings]
+
+    if params[:category]
+      session[:category] = params[:category]
+    else
+      redirect = true
     end
-    
-    @ratings_to_show = params[:ratings].keys
-    @ratings_to_show_hash = Hash[@ratings_to_show.collect {|key| [key, '1']}]
-    session[:ratings] = @ratings_to_show
-    
-    @movies = Movie.with_ratings(@ratings_to_show)
-    
-    @movies = @movies.order(params[:sort_by]) if params[:sort_by] != ''
-    session[:sort_by] = params[:sort_by]
-    @title_header = (params[:sort_by]=='title') ? 'hilite bg-warning' : ''
-    @release_date_header = (params[:sort_by]=='release_date') ? 'hilite bg-warning' : ''
+    session[:category] = session[:category] || ""
+    @category = session[:category]
+
+    if redirect
+      flash.keep
+      redirect_to movies_path({:category => @category, :ratings => @ratings})
+    end
+
+    @movies = Movie.where("rating in (?)", @ratings.keys).find(:all, :order => @category)
   end
 
   def new
