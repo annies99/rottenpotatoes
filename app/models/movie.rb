@@ -10,7 +10,7 @@ class Movie < ActiveRecord::Base
     
     if ratings_list.length() > 0
       formatted_ratings_list = ratings_list.map { |rating| rating.upcase }
-      Movie.where(rating: formatted_ratings_list)
+      Movie.where("rating in (?)", formatted_ratings_list)
     else
       Movie.all
     end
