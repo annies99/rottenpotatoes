@@ -24,16 +24,34 @@ class MoviesController < ApplicationController
     else
       redirect = true
     end
+
     session[:category] = session[:category] || ""
     @category = session[:category]
 
+    session[:sort_by] = if params[:sort_by].present?
+      params[:sort_by]
+    else
+      session[:sort_by] || 'id'
+    end
+    
+    session[:rating] = if params[:rating].present?
+        params[:rating]
+      else
+        session[:rating] || { 'G' => '1', 'PG' => '1', 'PG-13' => '1', 'R' => '1' }
+      end
+    
+    
     /
+    if !(params[:sort_by].present? && params[:rating].present?)
+    redirect_to movies_path(sort_by: session[:sort_by], rating: session[:rating])
+    return
+    end
+    
     if redirect
       flash.keep
       redirect_to movies_path({:category => @category, :ratings => @ratings})
     end
-    /
-    /
+
     if !session.key?(:ratings) || !session.key?(:sort_by)
       @all_ratings_hash = Hash[@all_ratings.collect {|key| [key, '1']}]
       session[:ratings] = @all_ratings_hash if !session.key?(:ratings)
